@@ -1,0 +1,41 @@
+name: Daily AI Digest
+
+on:
+  schedule:
+    - cron: "30 0 * * *"   # 00:30 UTC = 08:30 China Standard Time (UTC+8)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip
+          pip install requests feedparser python-dateutil
+
+      - name: Run digest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}   # 可选：你自己创建的 PAT（更高配额）
+        run: |
+          python scripts/digest.py
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add daily/*.md trend/*.csv
+          git commit -m "daily digest: $(date -u +%F)" || echo "No changes"
+          git push

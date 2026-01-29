@@ -1,0 +1,36 @@
+{
+  "keywords": ["ai", "llm", "agent", "inference", "open source", "gemini", "claude", "openai", "deepmind", "rag", "transformer", "cuda", "vllm", "quantization", "evaluation", "benchmark"],
+  "strong_keywords": ["openai", "anthropic", "deepmind", "gemini", "claude", "gpt", "llama", "mistral", "qwen", "vllm", "flashattention", "cuda", "inference"],
+
+  "limits": {
+    "hn_fetch": 80,
+    "hn_take": 12,
+    "rss_fetch_per_source": 60,
+    "rss_take": 18,
+    "gh_take": 8,
+    "top_signals": 5
+  },
+
+  "scoring": {
+    "keyword_hit": 2,
+    "strong_keyword_hit": 4,
+    "hn_score_100_bonus": 3,
+    "hn_score_200_bonus": 6,
+    "official_source_bonus": 6,
+    "media_source_bonus": 2
+  },
+
+  "official_sources": ["OpenAI Blog", "Anthropic", "Google AI Blog", "DeepMind", "Google Cloud AI Blog", "Hugging Face"],
+  "media_sources": ["TechCrunch AI", "Ars Technica AI", "The Verge"],
+
+  "rss": [
+    {"name": "OpenAI Blog", "url": "https://openai.com/blog/rss.xml"},
+    {"name": "Anthropic", "url": "https://www.anthropic.com/news/rss.xml"},
+    {"name": "Google AI Blog", "url": "https://blog.google/technology/ai/rss/"},
+    {"name": "DeepMind", "url": "https://deepmind.google/discover/blog/rss.xml"},
+    {"name": "Google Cloud AI Blog", "url": "https://cloud.google.com/blog/products/ai-machine-learning/rss"},
+    {"name": "Hugging Face", "url": "https://huggingface.co/blog/feed.xml"},
+    {"name": "TechCrunch AI", "url": "https://techcrunch.com/tag/artificial-intelligence/feed/"},
+    {"name": "Ars Technica AI", "url": "https://arstechnica.com/tag/artificial-intelligence/feed/"}
+  ]
+}
