@@ -81,14 +81,41 @@ def fetch_rss_items(
     rss_sources: List[Dict[str, str]],
     fetch_per_source: int = 60
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    RSS fetch with diagnostics.
+
+    Notes:
+    - We fetch the feed via requests first to expose HTTP status (403/404/etc.).
+    - Then we parse response bytes with feedparser.
+    - feed.bozo=True often indicates the server returned HTML (bot block) or malformed XML.
+    """
     items: List[Dict[str, Any]] = []
     warnings: List[str] = []
+
+    req_headers = {
+        "User-Agent": "ai-daily-digest/1.0 (+https://github.com/)",
+        "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+    }
 
     for src in rss_sources:
         name = src.get("name", "Unknown")
         url = src.get("url", "")
         try:
-            feed = feedparser.parse(url)
+            r = requests.get(url, headers=req_headers, timeout=20)
+            status = getattr(r, "status_code", None)
+            if status and status >= 400:
+                warnings.append(f"RSS HTTP {status}: {name}")
+                continue
+
+            feed = feedparser.parse(r.content)
+
+            # diagnostics
+            if getattr(feed, "bozo", False):
+                ex = getattr(feed, "bozo_exception", None)
+                warnings.append(f"RSS bozo: {name} — {ex}")
+            if hasattr(feed, "status") and getattr(feed, "status", None):
+                warnings.append(f"RSS status {feed.status}: {name}")
+
             entries = getattr(feed, "entries", []) or []
             if not entries:
                 warnings.append(f"RSS empty or unreadable: {name}")
@@ -109,12 +136,11 @@ def fetch_rss_items(
                     "published": safe_parse_dt(published),
                     "meta": {}
                 })
-        except Exception:
-            warnings.append(f"RSS failed: {name}")
+        except Exception as ex:
+            warnings.append(f"RSS failed: {name} — {type(ex).__name__}: {ex}")
             continue
 
     return items, warnings
-
 
 def fetch_hn_top(fetch_n: int = 50) -> Tuple[List[Dict[str, Any]], List[str]]:
     warnings: List[str] = []
@@ -187,13 +213,13 @@ def fetch_github_trending_dual(
     """
     warnings: List[str] = []
 
-    q_new = f"created:>{since_date_utc} stars:>50"
+    q_new = f"created:>{since_date_utc} stars:50..20000 topic:ai"
     data_new = github_search_repos(token, q_new, per_page=per_page, sort="stars", order="desc")
     items_new = (data_new or {}).get("items", []) if isinstance(data_new, dict) else []
     if data_new is None:
         warnings.append("GitHub search failed: new-repos query")
 
-    q_hot = f"pushed:>{since_date_utc} stars:>200"
+    q_hot = f"pushed:>{since_date_utc} stars:200..20000 topic:ai"
     data_hot = github_search_repos(token, q_hot, per_page=per_page, sort="stars", order="desc")
     items_hot = (data_hot or {}).get("items", []) if isinstance(data_hot, dict) else []
     if data_hot is None:
@@ -508,6 +534,11 @@ def main():
 
     # Top Signals from mixed pool (HN + RSS)
     mixed = dedupe(sorted(hn_take + rss_take, key=lambda x: x.get("score", 0), reverse=True))
+
+    # Hard relevance gate: Top Signals must hit at least 1 keyword (reduce HN noise)
+    kw_list = cfg.get("keywords", []) or []
+    mixed = [x for x in mixed if count_hits(f"{x.get('title','')} {x.get('summary','')}", kw_list) > 0]
+
     top_signals = mixed[:int(limits.get("top_signals", 5) or 5)]
 
     # -----------------------------
